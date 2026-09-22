@@ -12,6 +12,8 @@ router.post('/', async (req, res) => {
       garmentType,
       designPrompt,
       referenceImages = [],
+      generatedImageUrl = null,
+      designArtworkUrl = null,
       baseBrandSizeId,
       alterations = [],
     } = req.body;
@@ -85,6 +87,8 @@ router.post('/', async (req, res) => {
         garmentType,
         designPrompt,
         referenceImages,
+        generatedImageUrl,
+        designArtworkUrl,
         baseBrandSizeId,
         alterations: {
           create: calculatedAlterations,

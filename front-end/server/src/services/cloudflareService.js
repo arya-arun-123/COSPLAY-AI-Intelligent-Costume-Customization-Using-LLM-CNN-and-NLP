@@ -111,9 +111,26 @@ export async function generateDesignImage({
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(
-      `Cloudflare image request failed (${res.status}): ${detail.slice(0, 300)}`
+
+    let providerCode = null;
+    let providerMessage = '';
+
+    try {
+      const parsed = JSON.parse(detail);
+      providerCode = parsed.errors?.[0]?.code ?? null;
+      providerMessage = parsed.errors?.[0]?.message ?? '';
+    } catch {
+      providerMessage = detail;
+    }
+
+    const error = new Error(
+      providerMessage || `Cloudflare image request failed (${res.status})`
     );
+
+    error.providerCode = providerCode;
+    error.providerStatus = res.status;
+
+    throw error;
   }
 
   // Handle both response styles: JSON { result: { image: base64 } } or raw image bytes.

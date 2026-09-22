@@ -3,6 +3,7 @@ import './AIDesignPage.css';
 import SizeAdjuster from '../components/size-adjuster/SizeAdjuster';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
+import GarmentViewer from '../components/3d/GarmentViewer';
 
 // ============================================================
 // CONSTANTS — aligned with backend enum
@@ -323,6 +324,7 @@ function AIDesignPage() {
         // 1) Optional reference-image upload  2) AI generation.
         //    Only garmentType, creativePrompt and (if present) referenceImageUrl are sent to the AI.
         let referenceImageUrl = null;
+        let generatedImageUrl = null;
         try {
             if (referenceImage?.file) {
                 const formData = new FormData();
@@ -352,12 +354,13 @@ function AIDesignPage() {
             });
 
             if (isStale()) return;
-            if (!response.data?.success || !response.data?.imageBase64) {
+            if (!response.data?.success || (!response.data?.generatedImageUrl && !response.data?.imageBase64)) {
                 throw new Error('Design generation failed. Please try again.');
             }
 
-            const generatedImageUrl =
-                `data:${response.data.mimeType};base64,${response.data.imageBase64}`;
+            generatedImageUrl = response.data.generatedImageUrl || (
+                'data:' + response.data.mimeType + ';base64,' + response.data.imageBase64
+            );
 
             setGeneratedImage(generatedImageUrl);
             setGenerationComplete(true);
@@ -388,6 +391,7 @@ function AIDesignPage() {
                     referenceImages: referenceImageUrl
                         ? [referenceImageUrl]
                         : [],
+                    generatedImageUrl: generatedImageUrl?.startsWith('/uploads/') ? generatedImageUrl : null,
                     baseBrandSizeId: designState.sizeId,
                     alterations: (alterations || []).map((a) => ({
                         measurementTypeId: a.measurementTypeId,
@@ -943,6 +947,21 @@ function AIDesignPage() {
                             )}
                         </div>
 
+                        {/* Interactive 3D garment preview */}
+                        <div style={{ marginTop: 24 }}>
+                            <div
+                                className="generated-design-label"
+                                style={{ marginBottom: 12 }}
+                            >
+                                3D GARMENT PREVIEW
+                            </div>
+
+                            <GarmentViewer
+                                garmentType={d.garmentTypeEnum}
+                                designImageUrl={generatedImage}
+                            />
+                        </div>
+
                         {/* Info panel */}
                         <div className="generated-design-info">
                             {[
@@ -1034,3 +1053,6 @@ function AIDesignPage() {
 }
 
 export default AIDesignPage;
+
+
+

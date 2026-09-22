@@ -4,6 +4,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateDesignImage } from '../services/imageService.js';
 import {
+  saveGeneratedImage,
+  saveDesignArtwork,
+} from '../services/designAssetService.js';import {
   validateCustomizationInput,
   validateParsedCustomization,
 } from '../validators/customizationValidation.js';
@@ -61,12 +64,8 @@ router.post('/', async (req, res) => {
 
     if (referenceImageUrl) {
       const relativePath = referenceImageUrl.replace(/^\/uploads\//, '');
-      const imagePath = path.join(
-        __dirname,
-        '..',
-        'uploads',
-        relativePath
-      );
+      const uploadsRoot = path.resolve(__dirname, '..', '..', 'uploads');
+      const imagePath = path.join(uploadsRoot, relativePath);
 
       const imageBuffer = await fs.readFile(imagePath);
       referenceImageBase64 = imageBuffer.toString('base64');
@@ -91,13 +90,33 @@ router.post('/', async (req, res) => {
       referenceImageMimeType,
     });
 
+    // Persist the generated image in the Docker-mounted uploads directory.
+    const generatedImageUrl = await saveGeneratedImage(
+      result.imageBase64,
+      result.mimeType
+    );
+    const designArtworkUrl = await saveDesignArtwork(
+      result.imageBase64,
+      result.mimeType
+    );
     return res.json({
       success: true,
       imageBase64: result.imageBase64,
       mimeType: result.mimeType,
+      generatedImageUrl,
+      designArtworkUrl,
     });
   } catch (error) {
     console.error('Design generation error:', error);
+
+    if (error?.providerCode === 3030) {
+      return res.status(422).json({
+        success: false,
+        code: 'PROVIDER_CONTENT_FILTER',
+        message:
+          'We could not generate this design. Please try a different design description or reference image.',
+      });
+    }
 
     return res.status(500).json({
       success: false,

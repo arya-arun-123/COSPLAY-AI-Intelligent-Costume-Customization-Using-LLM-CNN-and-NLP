@@ -217,9 +217,11 @@ model CustomDesign {
   id              String      @id @default(uuid())
   userId          String
   garmentType     GarmentType
-  designPrompt    String
-  referenceImages String[]
-  baseBrandSizeId String
+  designPrompt      String
+  referenceImages   String[]
+  generatedImageUrl String?
+  designArtworkUrl  String?
+  baseBrandSizeId   String
 
   user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   baseBrandSize BrandSize                @relation(fields: [baseBrandSizeId], references: [id])
