@@ -8,14 +8,18 @@ import ProductsPage from '../pages/ProductsPage';
 import ProductDetailPage from '../pages/ProductDetailPage';
 import CartPage from '../pages/CartPage';
 import AIDesignPage from '../pages/AIDesignPage';
+import SavedDesignsPage from '../pages/SavedDesignsPage';
+import DesignDetailsPage from '../pages/DesignDetailsPage';
 
 const router = createBrowserRouter([
   // ==========================================
   // NORMAL WEBSITE PAGES
   // ==========================================
+
   {
     path: '/',
     element: <MainLayout />,
+
     children: [
       {
         index: true,
@@ -46,12 +50,31 @@ const router = createBrowserRouter([
         path: 'cart',
         element: <CartPage />,
       },
+
+      // ==================================
+      // SAVED AI DESIGNS
+      // ==================================
+
+      {
+        path: 'saved-designs',
+        element: <SavedDesignsPage />,
+      },
+
+      // ==================================
+      // INDIVIDUAL DESIGN DETAILS
+      // ==================================
+
+      {
+        path: 'designs/:id',
+        element: <DesignDetailsPage />,
+      },
     ],
   },
 
   // ==========================================
   // COSPLAY DESIGN STUDIO
   // ==========================================
+
   {
     path: '/ai-design',
     element: <AIDesignPage />,
@@ -59,7 +82,11 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <RouterProvider
+      router={router}
+    />
+  );
 }
 
 export default App;
