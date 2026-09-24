@@ -116,6 +116,15 @@ async function insertDocument(client, document) {
       )
       VALUES
       ($1, $2, $3::vector, $4, $5, $6, $7, $8::jsonb)
+      ON CONFLICT ("id")
+      DO UPDATE SET
+        "content" = EXCLUDED."content",
+        "embedding" = EXCLUDED."embedding",
+        "brand" = EXCLUDED."brand",
+        "garment" = EXCLUDED."garment",
+        "documentType" = EXCLUDED."documentType",
+        "source" = EXCLUDED."source",
+        "metadata" = EXCLUDED."metadata"
     `,
     [
       document.id,

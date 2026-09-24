@@ -15,15 +15,16 @@ enum GarmentType {
   TSHIRT
   JEANS
   HOODIE
+  DRESS
 }
 
 model Brand {
   id        String      @id @default(uuid())
   name      String      @unique
   slug      String      @unique
-  sizes     BrandSize[]
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+  sizes     BrandSize[]
 }
 
 model MeasurementType {
@@ -31,35 +32,36 @@ model MeasurementType {
   key                     String                   @unique
   label                   String
   unit                    String                   @default("inch")
-  brandMeasurements       BrandSizeMeasurement[]
-  customDesignAlterations CustomDesignAlteration[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
+  brandMeasurements       BrandSizeMeasurement[]
+  customDesignAlterations CustomDesignAlteration[]
 }
 
 model BrandSize {
   id            String                 @id @default(uuid())
   brandId       String
-  brand         Brand                  @relation(fields: [brandId], references: [id], onDelete: Cascade)
   garmentType   GarmentType
+  fitType       String?
   sizeLabel     String
-  measurements  BrandSizeMeasurement[]
-  customDesigns CustomDesign[]
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
+  brand         Brand                  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  measurements  BrandSizeMeasurement[]
+  customDesigns CustomDesign[]
 
-  @@unique([brandId, garmentType, sizeLabel])
+  @@unique([brandId, garmentType, fitType, sizeLabel])
 }
 
 model BrandSizeMeasurement {
   id                String          @id @default(uuid())
   brandSizeId       String
-  brandSize         BrandSize       @relation(fields: [brandSizeId], references: [id], onDelete: Cascade)
   measurementTypeId String
-  measurementType   MeasurementType @relation(fields: [measurementTypeId], references: [id])
   value             Float
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  brandSize         BrandSize       @relation(fields: [brandSizeId], references: [id], onDelete: Cascade)
+  measurementType   MeasurementType @relation(fields: [measurementTypeId], references: [id])
 
   @@unique([brandSizeId, measurementTypeId])
 }
@@ -73,9 +75,9 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   cart          Cart?
+  customDesigns CustomDesign[]
   orders        Order[]
   reviews       Review[]
-  customDesigns CustomDesign[]
 }
 
 model Category {
@@ -214,37 +216,44 @@ model Payment {
 }
 
 model CustomDesign {
-  id              String      @id @default(uuid())
+  id              String                   @id @default(uuid())
   userId          String
   garmentType     GarmentType
   designPrompt    String
   referenceImages String[]
   baseBrandSizeId String
-
-  user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  baseBrandSize BrandSize                @relation(fields: [baseBrandSizeId], references: [id])
-  alterations   CustomDesignAlteration[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  baseBrandSize   BrandSize                @relation(fields: [baseBrandSizeId], references: [id])
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alterations     CustomDesignAlteration[]
 }
 
 model CustomDesignAlteration {
-  id                String @id @default(uuid())
+  id                String          @id @default(uuid())
   customDesignId    String
   measurementTypeId String
-
-  alterationType String
-  adjustment     Float
-  baseValue      Float
-  finalValue     Float
-
-  customDesign    CustomDesign    @relation(fields: [customDesignId], references: [id], onDelete: Cascade)
-  measurementType MeasurementType @relation(fields: [measurementTypeId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  alterationType    String
+  adjustment        Float
+  baseValue         Float
+  finalValue        Float
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  customDesign      CustomDesign    @relation(fields: [customDesignId], references: [id], onDelete: Cascade)
+  measurementType   MeasurementType @relation(fields: [measurementTypeId], references: [id])
 
   @@index([customDesignId])
   @@index([measurementTypeId])
+}
+
+model RagDocument {
+  id           String                 @id
+  content      String
+  embedding    Unsupported("vector")?
+  brand        String
+  garment      String
+  documentType String
+  createdAt    DateTime?              @default(now()) @db.Timestamp(6)
+  source       String?
+  metadata     Json?
 }

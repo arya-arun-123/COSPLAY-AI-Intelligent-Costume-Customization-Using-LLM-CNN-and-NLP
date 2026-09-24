@@ -10,6 +10,9 @@
     "test": "node --test src/**/*.test.js",
     "db:migrate": "prisma migrate dev",
     "db:seed": "node src/database/seed.js",
+    "db:seed-garment": "node scripts/seed-garment-base.js",
+    "db:import-garments": "node scripts/import-garment-data.js",
+    "db:ingest-rag": "node scripts/ingest-rag.js",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
