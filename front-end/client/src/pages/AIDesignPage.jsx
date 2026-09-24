@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './AIDesignPage.css';
 import SizeAdjuster from '../components/size-adjuster/SizeAdjuster';
 import apiClient from '../services/apiClient';
@@ -73,6 +74,7 @@ const initialDesignState = {
 
 function AIDesignPage() {
     const { user, isAuthenticated } = useAuth();
+    const navigate = useNavigate();
 
     // ── state ───────────────────────────────────────────────
 
@@ -106,6 +108,7 @@ function AIDesignPage() {
     const [showSaveAuthModal, setShowSaveAuthModal] = useState(false);
     const [isSavingDesign, setIsSavingDesign] = useState(false);
     const [designSaved, setDesignSaved] = useState(false);
+    const [savedDesignId, setSavedDesignId] = useState(null);
 
     // Editing an already-generated design
     const [isEditingGeneratedDesign, setIsEditingGeneratedDesign] = useState(false);
@@ -153,6 +156,8 @@ function AIDesignPage() {
         setGenerationComplete(false);
         setGenerationError(null);
         setSaveWarning(null);
+        setDesignSaved(false);
+        setSavedDesignId(null);
 
         goTo(STEPS.BRAND);
     };
@@ -611,6 +616,7 @@ function AIDesignPage() {
         setGenerationError(null);
         setSaveWarning(null);
         setDesignSaved(false);
+        setSavedDesignId(null);
 
         goTo(STEPS.DESIGN);
     };
@@ -661,16 +667,20 @@ function AIDesignPage() {
                 alterations,
             } = designState;
 
-            await apiClient.post('/custom-designs', {
+            const response = await apiClient.post('/custom-designs', {
                 userId: currentUser.id,
                 garmentType: garmentTypeEnum,
                 designPrompt:
                     creativePrompt?.trim() ||
                     'Custom AI Design',
-                referenceImages:
-                    generatedReferenceImageUrl
+                referenceImages: [
+                    ...(generatedImage
+                        ? [generatedImage]
+                        : []),
+                    ...(generatedReferenceImageUrl
                         ? [generatedReferenceImageUrl]
-                        : [],
+                        : []),
+                ],
                 baseBrandSizeId: sizeId,
                 alterations: (alterations || []).map((a) => ({
                     measurementTypeId:
@@ -680,11 +690,20 @@ function AIDesignPage() {
                 })),
             });
 
+            const savedDesign = response.data?.data;
+
+            if (!savedDesign?.id) {
+                throw new Error(
+                    'Design was saved, but its ID could not be retrieved.'
+                );
+            }
+
+            setSavedDesignId(savedDesign.id);
             setDesignSaved(true);
             setShowSaveAuthModal(false);
             setSaveWarning(null);
 
-            return true;
+            return savedDesign.id;
         } catch (err) {
             console.error(
                 'Error saving custom design:',
@@ -704,7 +723,12 @@ function AIDesignPage() {
 
     const handleContinueWithDesign = async () => {
         if (isAuthenticated && user?.id) {
-            await handleSaveDesign();
+            const designId = await handleSaveDesign();
+
+            if (designId) {
+                navigate(`/designs/${designId}`);
+            }
+
             return;
         }
 
@@ -741,6 +765,7 @@ function AIDesignPage() {
         setShowSaveAuthModal(false);
         setIsSavingDesign(false);
         setDesignSaved(false);
+        setSavedDesignId(null);
 
         setIsEditingGeneratedDesign(false);
 
@@ -2117,7 +2142,13 @@ function AIDesignPage() {
                     onClose={() =>
                         setShowSaveAuthModal(false)
                     }
-                    onSuccess={handleSaveDesign}
+                    onSuccess={async () => {
+                        const designId = await handleSaveDesign();
+
+                        if (designId) {
+                            navigate(`/designs/${designId}`);
+                        }
+                    }}
                 />
             )}
         </div>
