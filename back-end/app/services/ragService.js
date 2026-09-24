@@ -35,10 +35,26 @@ async function retrieveRelevantDocuments({
   topK = 3,
 }) {
   try {
+    // Map application fit terminology to the terminology
+    // used by the RAG dataset.
+    const fitMapping = {
+      slim: "Slim Fit",
+      regular: "Regular Fit",
+      loose: "Oversized Fit",
+    };
+
+    const normalizedFit =
+      typeof fit === "string"
+        ? fit.trim().toLowerCase()
+        : "regular";
+
+    const fitLabel =
+      fitMapping[normalizedFit] || "Regular Fit";
+
     // Create the search query
     const queryText =
       `${brand} ${garment} chest ${chest}cm ` +
-      `height ${height}cm ${fit} fit`;
+      `height ${height}cm ${fitLabel}`;
 
     console.log("RAG Query:", queryText);
 
@@ -73,15 +89,23 @@ async function retrieveRelevantDocuments({
       topK,
     ]);
 
-    return result.rows.map((row) => ({
-  content: row.content,
-  score: Number(row.similarity),
-  metadata: {
-    brand: row.brand,
-    garment: row.garment,
-    documentType: row.documentType,
-  },
-}));
+    return result.rows.map((row) => {
+      const fitMatch = row.content.match(/Fit:\s*([^\n]+)/i);
+
+      return {
+        content: row.content,
+        score: Number(row.similarity),
+        metadata: {
+          brand: row.brand,
+          garment: row.garment,
+          documentType: row.documentType,
+          requestedFit: normalizedFit,
+          retrievedFit: fitMatch
+            ? fitMatch[1].trim()
+            : null,
+        },
+      };
+    });
   } catch (error) {
     console.error("Error retrieving documents:", error.message);
     throw error;

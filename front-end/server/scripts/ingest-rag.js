@@ -8,7 +8,7 @@ import pg from "pg";
 const { Pool } = pg;
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname.substring(1));
-const DATA_DIR = path.resolve(__dirname, "..", "data");
+const DATA_DIR = path.resolve(__dirname,"..", "..", "data");
 
 const CSV_FILES = {
   shirts: "shirts.csv",

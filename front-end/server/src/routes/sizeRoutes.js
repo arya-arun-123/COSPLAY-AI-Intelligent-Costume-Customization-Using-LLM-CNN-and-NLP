@@ -1,9 +1,27 @@
-import express from 'express';
+﻿import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { getSizeRecommendation } from '../services/sizeRecommendationService.js';
+import { retrieveRagContext } from '../services/ragClientService.js';
+import { generateRecommendationExplanation } from '../services/llm/recommendationExplanationService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+const CM_TO_INCH = 1 / 2.54;
+
+function convertMeasurementsCmToInches(measurements) {
+  const converted = {};
+
+  for (const [key, value] of Object.entries(measurements)) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      converted[key] = Number((value * CM_TO_INCH).toFixed(2));
+    } else {
+      converted[key] = value;
+    }
+  }
+
+  return converted;
+}
 
 
 // =====================================================
@@ -100,7 +118,22 @@ router.post('/recommend', async (req, res) => {
       });
     }
 
+    // -------------------------------------------------
+// GET BRAND
+// -------------------------------------------------
 
+    const brand = await prisma.brand.findUnique({
+      where: {
+        id: brandId,
+      },
+    });
+
+    if (!brand) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Brand not found',
+      });
+    }
     // -------------------------------------------------
     // GET BRAND SIZES
     // -------------------------------------------------
@@ -108,6 +141,7 @@ router.post('/recommend', async (req, res) => {
     const sizes = await prisma.brandSize.findMany({
       where: {
         brandId: brandId,
+        garmentType: garment.toUpperCase(),
       },
       include: {
         measurements: {
@@ -131,6 +165,19 @@ router.post('/recommend', async (req, res) => {
     // CONVERT PRISMA DATA INTO SIZE ENGINE FORMAT
     // -------------------------------------------------
 
+    // -------------------------------------------------
+    // RETRIEVE RAG CONTEXT
+    // -------------------------------------------------
+
+    const ragDocuments = await retrieveRagContext({
+      brand: brand.name,
+      garment,
+      chest: measurements.chest,
+      height: measurements.height,
+      fit,
+      topK: 3,
+    });
+
     const sizeChart = {};
 
     for (const size of sizes) {
@@ -139,12 +186,17 @@ router.post('/recommend', async (req, res) => {
 
       for (const measurement of size.measurements) {
 
-        const measurementName =
+        let measurementName =
           measurement.measurementType?.key;
 
         if (!measurementName) {
           continue;
         }
+
+// Normalize database measurement names to the size engine names.
+if (measurementName === 'sleeve_length') {
+  measurementName = 'sleeve';
+}
 
         sizeChart[size.sizeLabel][measurementName] =
           Number(measurement.value);
@@ -156,12 +208,29 @@ router.post('/recommend', async (req, res) => {
     // RUN SIZE ENGINE
     // -------------------------------------------------
 
+    const measurementsInches = convertMeasurementsCmToInches(measurements);
+
     const result = getSizeRecommendation({
-      measurements,
+      measurements: measurementsInches,
       sizeChart,
       garment,
       fit
     });
+       let explanation = null;
+
+try {
+  explanation = await generateRecommendationExplanation({
+    measurements,
+    fit,
+    ragContext: ragDocuments,
+    sizeEngineResult: result,
+  });
+} catch (error) {
+  console.error(
+    'Recommendation explanation unavailable:',
+    error
+  );
+}
 
 
     // -------------------------------------------------
@@ -169,9 +238,13 @@ router.post('/recommend', async (req, res) => {
     // -------------------------------------------------
 
     res.status(200).json({
-      status: 'success',
-      data: result
-    });
+    status: 'success',
+    data: {
+      ...result,
+      explanation: explanation?.explanation ?? null,
+      ragContext: ragDocuments,
+    }
+  });
 
   } catch (error) {
 

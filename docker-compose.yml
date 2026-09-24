@@ -42,6 +42,8 @@ services:
     environment:
       NODE_ENV: development
       PORT: 8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      DATABASE_URL: postgresql://postgres:MINNU@db:5432/Cosplay?schema=public
     depends_on:
       - db
 
