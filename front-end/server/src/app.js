@@ -12,6 +12,7 @@ import brandRoutes from './routes/brandRoutes.js';
 import sizeRoutes from './routes/sizeRoutes.js';
 import aiGenerationRoutes from './routes/aiGenerationRoutes.js';
 import customDesignRoutes from './routes/customDesignRoutes.js';
+import llmParserRoutes from './routes/llmParserRoutes.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -52,6 +53,7 @@ app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/reference-images', referenceImageRoutes);
 app.use('/api/v1/generate-design', aiGenerationRoutes);
+app.use('/api/v1/parse-customization', llmParserRoutes);
 
 // 404 handler for unmatched routes
 app.use((_req, res) => {
